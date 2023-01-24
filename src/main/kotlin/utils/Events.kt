@@ -1,6 +1,6 @@
-package test.utils
+package utils
 
-import test.enums.Line
+import enums.Line
 
 sealed class Events {
     data class ShowMessage(val message: String) : Events()

@@ -1,21 +1,19 @@
-package test.rabbit
+package rabbit
 
+import Constants.RABBITMQ_DISPLAY_EXCHANGE
+import Constants.RABBITMQ_DISPLAY_QUEUE
+import Constants.RABBITMQ_DISPLAY_ROUTING_KEY
+import _events
 import com.rabbitmq.client.*
+import commands
+import enums.Line
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import test.Constants.RABBITMQ_DISPLAY_EXCHANGE
-import test.Constants.RABBITMQ_DISPLAY_QUEUE
-import test.Constants.RABBITMQ_DISPLAY_ROUTING_KEY
-import test._events
-import test.commands
-import test.enums.Line
-import test.model.DisplayPayload
-import test.utils.Events
+import model.DisplayPayload
+import utils.Events
 import java.io.IOException
 import java.util.concurrent.TimeoutException
 
@@ -23,7 +21,7 @@ import java.util.concurrent.TimeoutException
 /**
  * Selective message broadcast with routingkey filter.
  */
-class DirectExchange() {
+class DirectExchange {
 
 
     //Step-1: Declare the exchange

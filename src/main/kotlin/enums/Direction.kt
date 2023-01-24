@@ -1,4 +1,4 @@
-package test.enums
+package enums
 
 enum class Direction(val direction: Byte) {
     Up(0x41),

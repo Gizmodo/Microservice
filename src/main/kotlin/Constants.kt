@@ -1,5 +1,3 @@
-package test
-
 object Constants {
     val displayName = "POSua LPOS-II-VFD USB CDC"
     val RABBITMQ_HEART_BEAT_TIMEOUT = 60

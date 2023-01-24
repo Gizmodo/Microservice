@@ -1,4 +1,4 @@
-package test.enums
+package enums
 
 enum class CursorMode(val mode: Byte) {
     Off(0),

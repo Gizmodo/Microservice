@@ -1,9 +1,7 @@
-package test
-
 import com.fazecast.jSerialComm.SerialPort
-import test.enums.CursorMode
-import test.enums.Direction
-import test.enums.Line
+import enums.CursorMode
+import enums.Direction
+import enums.Line
 
 class Commands(private val port: SerialPort) {
     private val b: ByteArray = byteArrayOf(0x0C)
@@ -57,7 +55,7 @@ class Commands(private val port: SerialPort) {
 
     fun WriteLine(line: Line, string: String) {
         var command = byteArrayOf(0x1B, 0x51, line.line)
-        command += string.toByteArray() + 0x0D;
+        command += string.toByteArray() + 0x0D
         port.writeBytes(command, command.size.toLong())
     }
 

@@ -1,5 +1,5 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.7.21'
+    id 'org.jetbrains.kotlin.jvm' version '1.8.0-RC2'
     id 'application'
 }
 
@@ -12,6 +12,14 @@ repositories {
 
 dependencies {
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.4")
+    implementation("ch.qos.logback:logback-classic:1.4.5")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    implementation("com.fazecast:jSerialComm:[2.0.0,3.0.0)")
+    implementation("com.rabbitmq:amqp-client:5.16.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
 }
 
 test {
@@ -19,11 +27,11 @@ test {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = '1.8'
+    kotlinOptions.jvmTarget = '18'
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = '1.8'
+    kotlinOptions.jvmTarget = '18'
 }
 
 application {

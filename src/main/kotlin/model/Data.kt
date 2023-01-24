@@ -1,4 +1,4 @@
-package test.model
+package model
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -12,6 +12,7 @@ data class DisplayPayload(
     val action: String,
     val params: String
 )
+
 fun main1() {
     val obj = Json.decodeFromString<Data>("""{"a":42, "b": "str"}""")
 }
