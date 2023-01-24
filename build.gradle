@@ -1,6 +1,7 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.8.0-RC2'
     id 'application'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.0-RC2'
 }
 
 group = 'org.example'
@@ -11,6 +12,8 @@ repositories {
 }
 
 dependencies {
+    implementation 'junit:junit:4.13.2'
+    implementation 'junit:junit-dep:4.11'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
