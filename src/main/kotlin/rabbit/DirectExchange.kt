@@ -82,7 +82,7 @@ class DirectExchange {
                 println("${RABBITMQ_DISPLAY_QUEUE}: $incomingMessage")
                 handlePayload(incomingMessage)
                 commands.ClearDisplay()
-                commands.WriteLine(Line.First, incomingMessage)
+                commands.writeLine(Line.First, incomingMessage)
             }) { consumerTag -> println(consumerTag) }
         }
     }

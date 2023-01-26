@@ -13,6 +13,7 @@ import rabbit.DirectExchange
 import utils.Events
 import java.io.IOException
 
+
 private val logger = KotlinLogging.logger {}
 lateinit var comPortDisplay: SerialPort
 lateinit var commands: Commands
@@ -91,7 +92,8 @@ fun main() {
     connectComPort()
     writeComPort()
     commands.ChangeCursor(CursorMode.Off)
-    commands.WriteLine(Line.Second, "IRA & MArUSYA")
+    commands.writeLine(Line.First, "авбгдеёжзиклмнопр+-=")
+    commands.writeLine(Line.Second, "стуфхцчшщъыьэюя!:_")
     /*   commands.ChangeCursor(CursorMode.Blink)
        Thread.sleep(2000)
        commands.ChangeCursor(CursorMode.Off)

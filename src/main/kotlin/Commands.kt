@@ -2,6 +2,7 @@ import com.fazecast.jSerialComm.SerialPort
 import enums.CursorMode
 import enums.Direction
 import enums.Line
+import utils.Converter
 
 class Commands(private val port: SerialPort) {
     private val b: ByteArray = byteArrayOf(0x0C)
@@ -53,9 +54,10 @@ class Commands(private val port: SerialPort) {
         port.writeBytes(command, command.size.toLong())
     }
 
-    fun WriteLine(line: Line, string: String) {
+    fun writeLine(line: Line, string: String) {
         var command = byteArrayOf(0x1B, 0x51, line.line)
-        command += string.toByteArray() + 0x0D
+        val convertedString = Converter.convertMessage(string)
+        command += convertedString + 0x0D
         port.writeBytes(command, command.size.toLong())
     }
 
