@@ -149,6 +149,11 @@ fun workWithCoroutines() {
                     DirectExchange.logger.info { "Поступила команда на вывод строки" }
                     lpos.writeLine(it.displayLine, it.message)
                 }
+
+                is DisplayEvent.ChangeCursor -> {
+                    DirectExchange.logger.info { "Поступила команда изменение курсора" }
+                    lpos.ChangeCursor(it.displayCursorMode)
+                }
             }
         }
     }

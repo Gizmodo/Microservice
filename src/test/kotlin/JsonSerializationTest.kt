@@ -1,3 +1,4 @@
+import enums.DisplayCursorMode
 import enums.DisplayLine
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -18,9 +19,12 @@ class JsonSerializationTest {
             DisplayLine.FirstScroll,
             "test"
         )
-        val encoded = Json.encodeToString(deDataClass)
+        val deChangeCursor: DisplayEvent = DisplayEvent.ChangeCursor(
+            DisplayCursorMode.Blink
+        )
+        val encoded: String = Json.encodeToString(deChangeCursor)
         logger.info { encoded }
-        val decoded = Json.decodeFromString<DisplayEvent>(encoded)
+        val decoded: DisplayEvent = Json.decodeFromString<DisplayEvent>(encoded)
         when (decoded) {
             DisplayEvent.ClearDisplay -> {
                 logger.info { "Был передан объект ClearDisplay" }
@@ -28,6 +32,10 @@ class JsonSerializationTest {
 
             is DisplayEvent.WriteLine -> {
                 logger.info { "Был передан класс WriteLine" }
+            }
+
+            is DisplayEvent.ChangeCursor -> {
+                logger.info { "Был передан объект ChangeCursor" }
             }
         }
         logger.info { decoded }
