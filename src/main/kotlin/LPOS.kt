@@ -1,17 +1,17 @@
 import com.fazecast.jSerialComm.SerialPort
-import enums.CursorMode
 import enums.Direction
-import enums.Line
+import enums.DisplayCursorMode
+import enums.DisplayLine
 import utils.Converter
 
-class Commands(private val port: SerialPort) {
-    private val b: ByteArray = byteArrayOf(0x0C)
+class LPOS(private val port: SerialPort) {
     fun ClearDisplay() {
-        port.writeBytes(b, b.size.toLong())
+        val command = byteArrayOf(0x0C)
+        port.writeBytes(command, command.size.toLong())
     }
 
-    fun ChangeCursor(cursorMode: CursorMode) {
-        val command = byteArrayOf(0x1B, 0x5F, cursorMode.mode)
+    fun ChangeCursor(displayCursorMode: DisplayCursorMode) {
+        val command = byteArrayOf(0x1B, 0x5F, displayCursorMode.cursorMode)
         port.writeBytes(command, command.size.toLong())
     }
 
@@ -54,11 +54,10 @@ class Commands(private val port: SerialPort) {
         port.writeBytes(command, command.size.toLong())
     }
 
-    fun writeLine(line: Line, string: String) {
-        var command = byteArrayOf(0x1B, 0x51, line.line)
+    fun writeLine(displayLine: DisplayLine, string: String) {
+        var command = byteArrayOf(0x1B, 0x51, displayLine.displayLine)
         val convertedString = Converter.convertMessage(string)
         command += convertedString + 0x0D
         port.writeBytes(command, command.size.toLong())
     }
-
 }

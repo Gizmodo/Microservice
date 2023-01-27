@@ -1,30 +1,26 @@
 package rabbit
 
-import Constants.RABBITMQ_DISPLAY_EXCHANGE
-import Constants.RABBITMQ_DISPLAY_QUEUE
-import Constants.RABBITMQ_DISPLAY_ROUTING_KEY
 import _events
 import com.rabbitmq.client.*
-import commands
-import enums.Line
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import model.DisplayPayload
-import utils.Events
+import model.DisplayEvent
+import utils.Constants.RABBITMQ_DISPLAY_EXCHANGE
+import utils.Constants.RABBITMQ_DISPLAY_QUEUE
+import utils.Constants.RABBITMQ_DISPLAY_ROUTING_KEY
+import utils.logger
 import java.io.IOException
 import java.util.concurrent.TimeoutException
 
-
-/**
- * Selective message broadcast with routingkey filter.
- */
 class DirectExchange {
+    companion object {
+        val logger by logger()
+    }
 
-
-    //Step-1: Declare the exchange
     @Throws(IOException::class, TimeoutException::class)
     fun declareExchange() {
         val connection = ConnectionManager.connection
@@ -78,24 +74,28 @@ class DirectExchange {
             val channel = it.createChannel()
             channel.basicConsume(RABBITMQ_DISPLAY_QUEUE, true, { consumerTag, message ->
                 val incomingMessage = message.body.decodeToString()
-                println(consumerTag)
-                println("${RABBITMQ_DISPLAY_QUEUE}: $incomingMessage")
-                handlePayload(incomingMessage)
-                commands.ClearDisplay()
-                commands.writeLine(Line.First, incomingMessage)
-            }) { consumerTag -> println(consumerTag) }
+                logger.info { "Тэг: $consumerTag" }
+                logger.info { "Очередь: ${RABBITMQ_DISPLAY_QUEUE}\n Сообщение: $incomingMessage" }
+                decodePayload(incomingMessage)
+            }) { consumerTag ->
+                logger.warn { consumerTag }
+            }
         }
     }
 
-    private fun handlePayload(incomingMessage: String) {
-        //incomingMessage JSON string
+    private fun decodePayload(incomingMessage: String) {
         try {
-            val obj = Json.decodeFromString<DisplayPayload>(incomingMessage)
+            logger.info { "Входящий JSON: $incomingMessage" }
+            val displayEvent = Json.decodeFromString<DisplayEvent>(incomingMessage)
             CoroutineScope(Dispatchers.IO).launch {
-                _events.emit(Events.ClearDisplay)
+                _events.emit(displayEvent)
             }
+        } catch (se: SerializationException) {
+            logger.error { se }
+        } catch (iae: IllegalArgumentException) {
+            logger.error { iae }
         } catch (e: Exception) {
-            println(e.toString())
+            logger.error { e }
         }
     }
 

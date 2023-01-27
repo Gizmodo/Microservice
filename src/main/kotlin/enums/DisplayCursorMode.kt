@@ -1,6 +1,6 @@
 package enums
 
-enum class CursorMode(val mode: Byte) {
+enum class DisplayCursorMode(val cursorMode: Byte) {
     Off(0),
     Blink(1),
     Filled(3),

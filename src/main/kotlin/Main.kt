@@ -1,24 +1,25 @@
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
-import enums.CursorMode
-import enums.Line
+import enums.DisplayCursorMode
+import enums.DisplayLine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import model.DisplayEvent
 import mu.KotlinLogging
 import rabbit.DirectExchange
-import utils.Events
+import utils.Constants
 import java.io.IOException
 
 
 private val logger = KotlinLogging.logger {}
 lateinit var comPortDisplay: SerialPort
-lateinit var commands: Commands
+lateinit var lpos: LPOS
 val comPortsList = mutableListOf<SerialPort>()
-val _events = MutableSharedFlow<Events>()
+val _events = MutableSharedFlow<DisplayEvent>()
 val events = _events.asSharedFlow()
 fun printComPorts() {
     logger.debug { "Print serial ports" }
@@ -54,7 +55,7 @@ fun connectComPort() {
     // comPortDisplay = SerialPort.getCommPorts()[0]
     with(comPortDisplay) {
         openPort()
-        commands = Commands(comPortDisplay)
+        lpos = LPOS(comPortDisplay)
         addDataListener(object : SerialPortDataListener {
             override fun getListeningEvents() =
                 SerialPort.LISTENING_EVENT_DATA_WRITTEN or SerialPort.LISTENING_EVENT_PORT_DISCONNECTED
@@ -82,7 +83,7 @@ fun writeComPort() {
     val s: String = "32r3"
     if (::comPortDisplay.isInitialized && comPortDisplay.isOpen) {
 //        comPort.writeBytes(s.toByteArray(), s.length.toLong())
-        commands.ClearDisplay()
+        lpos.ClearDisplay()
     }
 }
 
@@ -91,9 +92,9 @@ fun main() {
     printComPorts()
     connectComPort()
     writeComPort()
-    commands.ChangeCursor(CursorMode.Off)
-    commands.writeLine(Line.First, "авбгдеёжзиклмнопр+-=")
-    commands.writeLine(Line.Second, "стуфхцчшщъыьэюя!:_")
+    lpos.ChangeCursor(DisplayCursorMode.Off)
+    lpos.writeLine(DisplayLine.FirstScroll, "Соня едет на урок!!!!!!!")
+//    commands.writeLine(Line.Second, "стуфхцчшщъыьэюя!:_")
     /*   commands.ChangeCursor(CursorMode.Blink)
        Thread.sleep(2000)
        commands.ChangeCursor(CursorMode.Off)
@@ -139,16 +140,14 @@ fun workWithCoroutines() {
     CoroutineScope(Dispatchers.IO).launch {
         events.collect {
             when (it) {
-                Events.ClearDisplay -> {
-                    logger.debug("ClearDisplay")
+                DisplayEvent.ClearDisplay -> {
+                    DirectExchange.logger.info { "Поступила команда на очистку дисплея" }
+                    lpos.ClearDisplay()
                 }
 
-                is Events.ClearLine -> {
-                    logger.debug("ClearLine")
-                }
-
-                is Events.ShowMessage -> {
-                    logger.debug("ShowMessage")
+                is DisplayEvent.WriteLine -> {
+                    DirectExchange.logger.info { "Поступила команда на вывод строки" }
+                    lpos.writeLine(it.displayLine, it.message)
                 }
             }
         }

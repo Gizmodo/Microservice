@@ -1,12 +1,12 @@
 package rabbit
 
-import Constants.RABBITMQ_CONNECTION_TIMEOUT
-import Constants.RABBITMQ_HEART_BEAT_TIMEOUT
-import Constants.RABBITMQ_NETWORK_RECOVER_INTERVAL
 import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
 import com.rabbitmq.client.Recoverable
 import com.rabbitmq.client.RecoveryListener
+import utils.Constants.RABBITMQ_CONNECTION_TIMEOUT
+import utils.Constants.RABBITMQ_HEART_BEAT_TIMEOUT
+import utils.Constants.RABBITMQ_NETWORK_RECOVER_INTERVAL
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
