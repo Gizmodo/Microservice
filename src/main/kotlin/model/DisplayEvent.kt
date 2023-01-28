@@ -1,5 +1,6 @@
 package model
 
+import enums.Direction
 import enums.DisplayCursorMode
 import enums.DisplayLine
 import kotlinx.serialization.SerialName
@@ -30,4 +31,8 @@ sealed class DisplayEvent {
     @Serializable
     @SerialName("ScrollOverwrite")
     object ScrollOverwrite : DisplayEvent()
+
+    @Serializable
+    @SerialName("MoveTo")
+    data class MoveTo(val direction: Direction) : DisplayEvent()
 }

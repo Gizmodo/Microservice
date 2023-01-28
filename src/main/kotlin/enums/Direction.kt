@@ -1,5 +1,8 @@
 package enums
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class Direction(val direction: Byte) {
     Up(0x41),
     Down(0x42),

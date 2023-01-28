@@ -1,3 +1,4 @@
+import enums.Direction
 import enums.DisplayCursorMode
 import enums.DisplayLine
 import kotlinx.serialization.decodeFromString
@@ -25,8 +26,11 @@ class JsonSerializationTest {
         val deScrollHorizontal: DisplayEvent = DisplayEvent.ScrollHorizontal
         val deScrollVertical: DisplayEvent = DisplayEvent.ScrollVertical
         val deScrollOverwrite: DisplayEvent = DisplayEvent.ScrollOverwrite
+        val deMoveTo: DisplayEvent = DisplayEvent.MoveTo(
+            direction = Direction.CurrentLineEnd
+        )
 
-        val encoded: String = Json.encodeToString(deScrollOverwrite)
+        val encoded: String = Json.encodeToString(deMoveTo)
         logger.info { encoded }
         val decoded: DisplayEvent = Json.decodeFromString<DisplayEvent>(encoded)
         when (decoded) {
@@ -52,6 +56,10 @@ class JsonSerializationTest {
 
             DisplayEvent.ScrollOverwrite -> {
                 logger.info { "Был передан объект ScrollOverwrite" }
+            }
+
+            is DisplayEvent.MoveTo -> {
+                logger.info { "Был передан объект MoveTo" }
             }
         }
         logger.info { decoded }
