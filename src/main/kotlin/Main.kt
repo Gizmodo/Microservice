@@ -154,6 +154,11 @@ fun workWithCoroutines() {
                     DirectExchange.logger.info { "Поступила команда изменение курсора" }
                     lpos.ChangeCursor(it.displayCursorMode)
                 }
+
+                DisplayEvent.ScrollHorizontal -> {
+                    DirectExchange.logger.info { "Поступила команда горизонтальную прокрутку" }
+                    lpos.ScrollHorizontal()
+                }
             }
         }
     }

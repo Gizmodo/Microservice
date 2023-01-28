@@ -18,4 +18,8 @@ sealed class DisplayEvent {
     @Serializable
     @SerialName("ChangeCursor")
     data class ChangeCursor(val displayCursorMode: DisplayCursorMode) : DisplayEvent()
+
+    @Serializable
+    @SerialName("ScrollHorizontal")
+    object ScrollHorizontal : DisplayEvent()
 }
