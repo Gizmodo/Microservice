@@ -164,6 +164,11 @@ fun workWithCoroutines() {
                     DirectExchange.logger.info { "Поступила команда на вертикальную прокрутку" }
                     lpos.ScrollVertical()
                 }
+
+                DisplayEvent.ScrollOverwrite -> {
+                    DirectExchange.logger.info { "Поступила команда на прокрутку с перезаписью" }
+                    lpos.ScrollOverwrite()
+                }
             }
         }
     }

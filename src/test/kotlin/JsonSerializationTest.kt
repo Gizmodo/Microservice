@@ -24,8 +24,9 @@ class JsonSerializationTest {
         )
         val deScrollHorizontal: DisplayEvent = DisplayEvent.ScrollHorizontal
         val deScrollVertical: DisplayEvent = DisplayEvent.ScrollVertical
+        val deScrollOverwrite: DisplayEvent = DisplayEvent.ScrollOverwrite
 
-        val encoded: String = Json.encodeToString(deScrollVertical)
+        val encoded: String = Json.encodeToString(deScrollOverwrite)
         logger.info { encoded }
         val decoded: DisplayEvent = Json.decodeFromString<DisplayEvent>(encoded)
         when (decoded) {
@@ -47,6 +48,10 @@ class JsonSerializationTest {
 
             DisplayEvent.ScrollVertical -> {
                 logger.info { "Был передан объект ScrollVertical" }
+            }
+
+            DisplayEvent.ScrollOverwrite -> {
+                logger.info { "Был передан объект ScrollOverwrite" }
             }
         }
         logger.info { decoded }
