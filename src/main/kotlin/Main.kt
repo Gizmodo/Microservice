@@ -2,7 +2,6 @@ import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
 import enums.DisplayCursorMode
-import enums.DisplayLine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -13,7 +12,6 @@ import mu.KotlinLogging
 import rabbit.DirectExchange
 import utils.Constants
 import java.io.IOException
-
 
 private val logger = KotlinLogging.logger {}
 lateinit var comPortDisplay: SerialPort
@@ -79,34 +77,17 @@ fun connectComPort() {
     }
 }
 
-fun writeComPort() {
-    val s: String = "32r3"
-    if (::comPortDisplay.isInitialized && comPortDisplay.isOpen) {
-//        comPort.writeBytes(s.toByteArray(), s.length.toLong())
-        lpos.ClearDisplay()
-    }
-}
-
 fun main() {
     workWithCoroutines()
     printComPorts()
     connectComPort()
-    writeComPort()
-    lpos.ChangeCursor(DisplayCursorMode.Off)
-    lpos.writeLine(DisplayLine.FirstScroll, "Соня едет на урок!!!!!!!")
-//    commands.writeLine(Line.Second, "стуфхцчшщъыьэюя!:_")
-    /*   commands.ChangeCursor(CursorMode.Blink)
-       Thread.sleep(2000)
-       commands.ChangeCursor(CursorMode.Off)
-       Thread.sleep(2000)
-       commands.ChangeCursor(CursorMode.Filled)
-       Thread.sleep(2000)*/
+    lpos.clearDisplay()
+    lpos.changeCursor(DisplayCursorMode.Blink)
+
     val dir = DirectExchange()
     dir.declareExchange()
     dir.declareQueues()
     dir.declareBindings()
-
-    //Threads created to publish-subscribe asynchronously
 
     //Threads created to publish-subscribe asynchronously
     val subscribe: Thread = object : Thread() {
@@ -142,7 +123,7 @@ fun workWithCoroutines() {
             when (it) {
                 DisplayEvent.ClearDisplay -> {
                     DirectExchange.logger.info { "Поступила команда на очистку дисплея" }
-                    lpos.ClearDisplay()
+                    lpos.clearDisplay()
                 }
 
                 is DisplayEvent.WriteLine -> {
@@ -152,42 +133,42 @@ fun workWithCoroutines() {
 
                 is DisplayEvent.ChangeCursor -> {
                     DirectExchange.logger.info { "Поступила команда изменение курсора" }
-                    lpos.ChangeCursor(it.displayCursorMode)
+                    lpos.changeCursor(it.displayCursorMode)
                 }
 
                 DisplayEvent.ScrollHorizontal -> {
                     DirectExchange.logger.info { "Поступила команда на горизонтальную прокрутку" }
-                    lpos.ScrollHorizontal()
+                    lpos.scrollHorizontal()
                 }
 
                 DisplayEvent.ScrollVertical -> {
                     DirectExchange.logger.info { "Поступила команда на вертикальную прокрутку" }
-                    lpos.ScrollVertical()
+                    lpos.scrollVertical()
                 }
 
                 DisplayEvent.ScrollOverwrite -> {
                     DirectExchange.logger.info { "Поступила команда на прокрутку с перезаписью" }
-                    lpos.ScrollOverwrite()
+                    lpos.scrollOverwrite()
                 }
 
                 is DisplayEvent.MoveTo -> {
                     DirectExchange.logger.info { "Поступила команда на перемещение курсора" }
-                    lpos.MoveTo(it.direction)
+                    lpos.moveTo(it.direction)
                 }
 
                 is DisplayEvent.MoveToPosition -> {
                     DirectExchange.logger.info { "Поступила команда на перемещение курсора в позицию [x;y]" }
-                    lpos.MoveToPosition(it.x, it.y)
+                    lpos.moveToPosition(it.x, it.y)
                 }
 
                 DisplayEvent.DisplayInit -> {
                     DirectExchange.logger.info { "Поступила команда на инициализацию дисплея" }
-                    lpos.DisplayInit()
+                    lpos.displayInit()
                 }
 
                 DisplayEvent.ClearLine -> {
                     DirectExchange.logger.info { "Поступила команда на очистку линии" }
-                    lpos.ClearLine()
+                    lpos.clearLine()
                 }
             }
         }
