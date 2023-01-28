@@ -44,4 +44,8 @@ sealed class DisplayEvent {
     @SerialName("DisplayInit")
     object DisplayInit : DisplayEvent()
 
+    @Serializable
+    @SerialName("ClearLine")
+    object ClearLine : DisplayEvent()
+
 }

@@ -184,6 +184,11 @@ fun workWithCoroutines() {
                     DirectExchange.logger.info { "Поступила команда на инициализацию дисплея" }
                     lpos.DisplayInit()
                 }
+
+                DisplayEvent.ClearLine -> {
+                    DirectExchange.logger.info { "Поступила команда на очистку линии" }
+                    lpos.ClearLine()
+                }
             }
         }
     }

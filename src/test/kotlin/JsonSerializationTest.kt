@@ -34,8 +34,9 @@ class JsonSerializationTest {
             y = 5
         )
         val deDisplayInit: DisplayEvent = DisplayEvent.DisplayInit
+        val deClearLine: DisplayEvent = DisplayEvent.ClearLine
 
-        val encoded: String = Json.encodeToString(deDisplayInit)
+        val encoded: String = Json.encodeToString(deClearLine)
         logger.info { encoded }
         val decoded: DisplayEvent = Json.decodeFromString<DisplayEvent>(encoded)
         when (decoded) {
@@ -73,6 +74,10 @@ class JsonSerializationTest {
 
             DisplayEvent.DisplayInit -> {
                 logger.info { "Был передан объект DisplayInit" }
+            }
+
+            DisplayEvent.ClearLine -> {
+                logger.info { "Был передан объект ClearLine" }
             }
         }
         logger.info { decoded }
