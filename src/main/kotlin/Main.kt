@@ -179,6 +179,11 @@ fun workWithCoroutines() {
                     DirectExchange.logger.info { "Поступила команда на перемещение курсора в позицию [x;y]" }
                     lpos.MoveToPosition(it.x, it.y)
                 }
+
+                DisplayEvent.DisplayInit -> {
+                    DirectExchange.logger.info { "Поступила команда на инициализацию дисплея" }
+                    lpos.DisplayInit()
+                }
             }
         }
     }

@@ -39,4 +39,9 @@ sealed class DisplayEvent {
     @Serializable
     @SerialName("MoveToPosition")
     data class MoveToPosition(val x: Byte, val y: Byte) : DisplayEvent()
+
+    @Serializable
+    @SerialName("DisplayInit")
+    object DisplayInit : DisplayEvent()
+
 }
