@@ -22,4 +22,8 @@ sealed class DisplayEvent {
     @Serializable
     @SerialName("ScrollHorizontal")
     object ScrollHorizontal : DisplayEvent()
+
+    @Serializable
+    @SerialName("ScrollVertical")
+    object ScrollVertical : DisplayEvent()
 }

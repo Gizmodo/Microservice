@@ -156,8 +156,13 @@ fun workWithCoroutines() {
                 }
 
                 DisplayEvent.ScrollHorizontal -> {
-                    DirectExchange.logger.info { "Поступила команда горизонтальную прокрутку" }
+                    DirectExchange.logger.info { "Поступила команда на горизонтальную прокрутку" }
                     lpos.ScrollHorizontal()
+                }
+
+                DisplayEvent.ScrollVertical -> {
+                    DirectExchange.logger.info { "Поступила команда на вертикальную прокрутку" }
+                    lpos.ScrollVertical()
                 }
             }
         }

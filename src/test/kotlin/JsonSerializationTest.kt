@@ -23,8 +23,9 @@ class JsonSerializationTest {
             DisplayCursorMode.Blink
         )
         val deScrollHorizontal: DisplayEvent = DisplayEvent.ScrollHorizontal
+        val deScrollVertical: DisplayEvent = DisplayEvent.ScrollVertical
 
-        val encoded: String = Json.encodeToString(deScrollHorizontal)
+        val encoded: String = Json.encodeToString(deScrollVertical)
         logger.info { encoded }
         val decoded: DisplayEvent = Json.decodeFromString<DisplayEvent>(encoded)
         when (decoded) {
@@ -42,6 +43,10 @@ class JsonSerializationTest {
 
             DisplayEvent.ScrollHorizontal -> {
                 logger.info { "Был передан объект ScrollHorizontal" }
+            }
+
+            DisplayEvent.ScrollVertical -> {
+                logger.info { "Был передан объект ScrollVertical" }
             }
         }
         logger.info { decoded }
