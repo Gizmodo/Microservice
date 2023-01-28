@@ -29,8 +29,12 @@ class JsonSerializationTest {
         val deMoveTo: DisplayEvent = DisplayEvent.MoveTo(
             direction = Direction.CurrentLineEnd
         )
+        val deMoveToPosition: DisplayEvent = DisplayEvent.MoveToPosition(
+            x = 4,
+            y = 5
+        )
 
-        val encoded: String = Json.encodeToString(deMoveTo)
+        val encoded: String = Json.encodeToString(deMoveToPosition)
         logger.info { encoded }
         val decoded: DisplayEvent = Json.decodeFromString<DisplayEvent>(encoded)
         when (decoded) {
@@ -60,6 +64,10 @@ class JsonSerializationTest {
 
             is DisplayEvent.MoveTo -> {
                 logger.info { "Был передан объект MoveTo" }
+            }
+
+            is DisplayEvent.MoveToPosition -> {
+                logger.info { "Был передан объект MoveToPosition" }
             }
         }
         logger.info { decoded }
