@@ -9,6 +9,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import model.DisplayEvent
+import utils.Constants.RABBITMQ_BARCODE_QUEUE
+import utils.Constants.RABBITMQ_BARCODE_ROUTING_KEY
 import utils.Constants.RABBITMQ_DISPLAY_EXCHANGE
 import utils.Constants.RABBITMQ_DISPLAY_QUEUE
 import utils.Constants.RABBITMQ_DISPLAY_ROUTING_KEY
@@ -51,6 +53,13 @@ class DirectExchange {
                     false,
                     null
                 )
+                queueDeclare(
+                    RABBITMQ_BARCODE_QUEUE,
+                    true,
+                    false,
+                    false,
+                    null
+                )
                 close()
             }
         }
@@ -62,6 +71,7 @@ class DirectExchange {
         ConnectionManager.connection?.let {
             val channel = it.createChannel()
             channel.queueBind(RABBITMQ_DISPLAY_QUEUE, RABBITMQ_DISPLAY_EXCHANGE, RABBITMQ_DISPLAY_ROUTING_KEY)
+            channel.queueBind(RABBITMQ_BARCODE_QUEUE, RABBITMQ_DISPLAY_EXCHANGE, RABBITMQ_BARCODE_ROUTING_KEY)
             channel.close()
         }
     }
@@ -101,12 +111,16 @@ class DirectExchange {
 
     //Step-5: Publish the messages
     @Throws(IOException::class, TimeoutException::class)
-    fun publishMessage() {
+    fun publishMessage(message: String) {
         val connection = ConnectionManager.connection
         if (connection != null) {
             val channel = connection.createChannel()
-            val message = "Direct message - Turn on the Home Appliances "
-            channel.basicPublish("my-direct-exchange", "homeAppliance", null, message.toByteArray())
+            channel.basicPublish(
+                RABBITMQ_DISPLAY_EXCHANGE,
+                RABBITMQ_BARCODE_ROUTING_KEY,
+                null,
+                message.toByteArray()
+            )
             channel.close()
         }
     }
