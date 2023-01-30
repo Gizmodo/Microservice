@@ -1,11 +1,9 @@
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
 import model.DisplayEvent
 import mu.KotlinLogging
 import rabbit.DirectExchange
@@ -17,10 +15,15 @@ private val logger = KotlinLogging.logger {}
 lateinit var comPortDisplay: SerialPort
 lateinit var barcodePort: SerialPort
 lateinit var lpos: LPOS
+lateinit var monitorJob: Job
 val comPortsList = mutableListOf<SerialPort>()
 val _events = MutableSharedFlow<DisplayEvent>()
 val events = _events.asSharedFlow()
 lateinit var dir: DirectExchange
+
+val completableJob = Job()
+val coroutineScope = CoroutineScope(Dispatchers.IO + completableJob)
+
 fun printComPorts() {
     logger.debug { "Print serial ports" }
     val ports = SerialPort.getCommPorts()
@@ -61,14 +64,18 @@ fun disconnectBarcodePort() {
                 it.closePort()
             }
         }
+        monitorJob = monitorWorker()
         logger.debug("Barcode port closed")
     }
 }
 
-fun connectComPort() {
+fun connectBarcodeComPort() {
     if (::barcodePort.isInitialized) {
         with(barcodePort) {
             openPort()
+            if (::monitorJob.isInitialized) {
+                monitorJob?.cancel()
+            }
             addDataListener(object : SerialPortDataListener {
                 override fun getListeningEvents() =
                     SerialPort.LISTENING_EVENT_DATA_AVAILABLE or SerialPort.LISTENING_EVENT_PORT_DISCONNECTED
@@ -101,6 +108,9 @@ fun connectComPort() {
             })
         }
     }
+}
+
+fun connectLPOSComPort() {
     if (::comPortDisplay.isInitialized) {
         with(comPortDisplay) {
             openPort()
@@ -132,7 +142,8 @@ fun connectComPort() {
 fun main() {
     workWithCoroutines()
     printComPorts()
-    connectComPort()
+    connectBarcodeComPort()
+    connectLPOSComPort()
 
     dir = DirectExchange().apply {
         declareExchange()
@@ -151,6 +162,23 @@ fun main() {
         }
     }
     subscribe.start()
+}
+
+fun monitorWorker(): Job {
+    return coroutineScope.launch {
+        while (isActive) {
+            SerialPort.getCommPorts().forEach { serialPort ->
+                if (!barcodePort.isOpen) {
+                    if (serialPort.descriptivePortName.contains(barcodeName)) {
+                        barcodePort = serialPort
+                        connectBarcodeComPort()
+                    }
+                }
+            }
+            logger.info("Попытка восстановить подключение к ${barcodeName}")
+            delay(3000)
+        }
+    }
 }
 
 fun workWithCoroutines() {
