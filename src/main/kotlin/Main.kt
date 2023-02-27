@@ -1,7 +1,6 @@
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
-import com.skydoves.whatif.whatIfNotNull
 import config.ConfigUtils.loadConfig
 import config.data.Config
 import enums.*
@@ -15,6 +14,7 @@ import utils.Constants.barcodeName
 import utils.Constants.barcodeName2
 import utils.Constants.displayName
 import java.io.IOException
+import kotlin.math.pow
 import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
@@ -25,7 +25,7 @@ lateinit var lpos: LPOS
 lateinit var scaleDevice: ScaleDevice
 lateinit var monitorJob: Job
 
-var config: Config? = null
+lateinit var config: Config
 
 val comPortsList = mutableListOf<SerialPort>()
 val _events = MutableSharedFlow<DisplayEvent>()
@@ -71,7 +71,7 @@ fun disconnectComPort() {
                 it.closePort()
             }
         }
-        logger.debug("Display com port ${config?.devicesPort?.display} closed")
+        logger.debug("Display com port ${config.devicesPort.display} closed")
     }
 }
 
@@ -172,9 +172,14 @@ fun connectLPOSComPort() {
 }
 
 fun main() {
-    config = loadConfig()
-    config.whatIfNotNull(
+    loadConfig().fold(
+        { error ->
+            logger.error { error }
+            exitProcess(404)
+        },
         {
+            logger.info { "Config successfully loaded" }
+            config = it
             logger.info { "Config file $it" }
             dir = DirectExchange(it)
             with(dir) {
@@ -182,12 +187,7 @@ fun main() {
                 declareQueues()
                 declareBindings()
             }
-            logger.info { "Config successfully loaded" }
             logger.info { "RabbitMQ successfully configured" }
-        },
-        {
-            logger.error { "Config file not found" }
-            exitProcess(404)
         }
     )
 
@@ -294,7 +294,7 @@ private fun parseScaleResponse(data: ByteArray) {
                         logger.info { "признак фиксации веса" }
                         val weightArray = byteArrayOf(data[7], data[8], data[9], data[10])
                         val littleEndianConversion = littleEndianConversion(weightArray)
-                        val result = Math.pow(10.toDouble(), -3.toDouble())
+                        val result = 10.toDouble().pow((-3).toDouble())
                         // logger.info { weight.toDouble()*10f.pow(-3) }
                         val roundoff = String.format("%.3f", littleEndianConversion * result)
                         //  logger.info { weight*result }
@@ -333,7 +333,7 @@ fun monitorWorker(): Job {
                     }
                 }
             }
-            logger.info("Попытка восстановить подключение к ${barcodeName}")
+            logger.info("Попытка восстановить подключение к $barcodeName")
             delay(3000)
         }
     }
