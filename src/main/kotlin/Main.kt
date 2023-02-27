@@ -1,26 +1,42 @@
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
+import com.skydoves.whatif.whatIfNotNull
+import config.ConfigUtils.loadConfig
+import config.data.Config
+import enums.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.*
 import model.DisplayEvent
 import mu.KotlinLogging
 import rabbit.DirectExchange
 import utils.Constants.barcodeName
+import utils.Constants.barcodeName2
 import utils.Constants.displayName
 import java.io.IOException
+import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
 lateinit var comPortDisplay: SerialPort
 lateinit var barcodePort: SerialPort
+lateinit var scalePort: SerialPort
 lateinit var lpos: LPOS
+lateinit var scaleDevice: ScaleDevice
 lateinit var monitorJob: Job
+
+var config: Config? = null
+
 val comPortsList = mutableListOf<SerialPort>()
 val _events = MutableSharedFlow<DisplayEvent>()
 val events = _events.asSharedFlow()
+val scaleFlow = MutableSharedFlow<String>()
 lateinit var dir: DirectExchange
-
+val shared = MutableSharedFlow<String>(
+    replay = 1,
+    onBufferOverflow = BufferOverflow.DROP_OLDEST
+)
+val state: Flow<String> = shared.distinctUntilChanged()
 val completableJob = Job()
 val coroutineScope = CoroutineScope(Dispatchers.IO + completableJob)
 
@@ -40,6 +56,9 @@ fun printComPorts() {
         if (serialPort.descriptivePortName.contains(barcodeName)) {
             barcodePort = serialPort
         }
+        if (serialPort.descriptivePortName.contains(barcodeName2)) {
+            scalePort = serialPort
+        }
         logger.debug(serialPort.descriptivePortName.toString() + " " + serialPort.systemPortPath)
     }
 }
@@ -52,7 +71,20 @@ fun disconnectComPort() {
                 it.closePort()
             }
         }
-        logger.debug("Port closed")
+        logger.debug("Display com port ${config?.devicesPort?.display} closed")
+    }
+}
+
+fun disconnectScalePort() {
+    if (::scalePort.isInitialized) {
+        scalePort.let {
+            if (it.isOpen) {
+                it.removeDataListener()
+                it.closePort()
+            }
+        }
+        monitorJob = monitorWorker()
+        logger.debug("Scale port closed")
     }
 }
 
@@ -140,17 +172,37 @@ fun connectLPOSComPort() {
 }
 
 fun main() {
+    config = loadConfig()
+    config.whatIfNotNull(
+        {
+            logger.info { "Config file $it" }
+            dir = DirectExchange(it)
+            with(dir) {
+                declareExchange()
+                declareQueues()
+                declareBindings()
+            }
+            logger.info { "Config successfully loaded" }
+            logger.info { "RabbitMQ successfully configured" }
+        },
+        {
+            logger.error { "Config file not found" }
+            exitProcess(404)
+        }
+    )
+
     workWithCoroutines()
     printComPorts()
     connectBarcodeComPort()
     connectLPOSComPort()
+    connectScalePort()
+    // запуск цикла опроса весового модуля
+    requestScale()
 
-    dir = DirectExchange().apply {
-        declareExchange()
-        declareQueues()
-        declareBindings()
-    }
+    subscribeToRabbitMQMessages()
+}
 
+fun subscribeToRabbitMQMessages() {
     //Threads created to publish-subscribe asynchronously
     val subscribe: Thread = object : Thread() {
         override fun run() {
@@ -162,6 +214,112 @@ fun main() {
         }
     }
     subscribe.start()
+}
+
+fun connectScalePort() {
+    if (::scalePort.isInitialized) {
+        with(scalePort) {
+            openPort()
+            scaleDevice = ScaleDevice(scalePort)
+            if (::monitorJob.isInitialized) {
+                monitorJob?.cancel()
+            }
+            addDataListener(object : SerialPortDataListener {
+                override fun getListeningEvents() =
+                    SerialPort.LISTENING_EVENT_DATA_WRITTEN or
+                        SerialPort.LISTENING_EVENT_DATA_AVAILABLE or SerialPort.LISTENING_EVENT_PORT_DISCONNECTED
+
+                override fun serialEvent(event: SerialPortEvent) {
+                    when (event.eventType) {
+                        SerialPort.LISTENING_EVENT_DATA_RECEIVED -> {
+                            logger.debug("LISTENING_EVENT_DATA_RECEIVED")
+                        }
+
+                        SerialPort.LISTENING_EVENT_DATA_WRITTEN -> {
+                            logger.info { "Data written" }
+                        }
+
+                        SerialPort.LISTENING_EVENT_DATA_AVAILABLE -> {
+                            Thread.sleep(100)
+                            val newData = ByteArray(this@with.bytesAvailable())
+                            val numRead = this@with.readBytes(newData, newData.size.toLong())
+                            parseScaleResponse(newData)
+
+                            val str = String(newData)
+                            // dir.publishMessage(str)
+                            logger.debug { "Read $numRead bytes. Buffer $str" }
+                        }
+
+                        SerialPort.LISTENING_EVENT_PORT_DISCONNECTED -> {
+                            logger.debug("LISTENING_EVENT_PORT_DISCONNECTED")
+                            disconnectScalePort()
+                        }
+
+                        else -> {
+                            logger.debug { "ELSE at ScalePort SerialEvent" }
+                        }
+                    }
+                }
+
+
+            })
+        }
+    }
+}
+
+private fun parseScaleResponse(data: ByteArray) {
+    logger.info { data.toHexString2() }
+    val length = data[2]
+    when (Symbols from data[0]) {
+        Symbols.ENQ -> {
+            logger.info { "ENQ" }
+        }
+
+        Symbols.STX -> {
+            logger.info { "STX" }
+        }
+
+        Symbols.ACK -> {
+            logger.info { "ACK" }
+            when (ScaleCommand from data[3]) {
+                ScaleCommand.GETWEIGHT -> {
+                    logger.info { "Weight response" }
+                    val byteArray = byteArrayOf(data[5], data[6])
+                    val shortArray = ShortArray(byteArray.size / 2) {
+                        (byteArray[it * 2].toUByte().toInt() + (byteArray[(it * 2) + 1].toInt() shl 8)).toShort()
+                    }
+                    val state = shortArray[0].toUShort().toString(radix = 2).padStart(UByte.SIZE_BITS, '0')
+                    logger.info { state }
+                    if (isKthBitSet(shortArray[0].toUShort().toInt(), 0)) {
+                        logger.info { "признак фиксации веса" }
+                        val weightArray = byteArrayOf(data[7], data[8], data[9], data[10])
+                        val littleEndianConversion = littleEndianConversion(weightArray)
+                        val result = Math.pow(10.toDouble(), -3.toDouble())
+                        // logger.info { weight.toDouble()*10f.pow(-3) }
+                        val roundoff = String.format("%.3f", littleEndianConversion * result)
+                        //  logger.info { weight*result }
+                        //  logger.info { roundoff }
+                        coroutineScope.launch {
+                            scaleFlow.emit(roundoff)
+                            shared.tryEmit(roundoff)
+                        }
+                    }
+                }
+
+                else -> {
+                    logger.info { "Unknown command" }
+                }
+            }
+        }
+
+        Symbols.NAK -> {
+            logger.info { "NAK" }
+        }
+
+        Symbols.ERR -> {
+            logger.info { "ERR" }
+        }
+    }
 }
 
 fun monitorWorker(): Job {
@@ -181,7 +339,27 @@ fun monitorWorker(): Job {
     }
 }
 
+fun requestScale(): Job {
+    return coroutineScope.launch {
+        while (scalePort.isOpen) {
+            scaleDevice.getWeight()
+            delay(1000L)
+        }
+    }
+}
+
 fun workWithCoroutines() {
+    CoroutineScope(Dispatchers.IO).launch {
+        scaleFlow.collectLatest {
+            logger.warn { it }
+        }
+    }
+    CoroutineScope(Dispatchers.IO).launch {
+        state.collectLatest {
+            logger.error { it }
+            dir.publishScaleWeight(it)
+        }
+    }
     CoroutineScope(Dispatchers.IO).launch {
         events.collect {
             when (it) {

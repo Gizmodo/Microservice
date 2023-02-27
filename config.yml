@@ -1,0 +1,25 @@
+rabbitmq:
+  exchange: "DisplayExchange"
+  host: "192.168.88.22"
+  port: 5672
+  username: "admin"
+  password: "1"
+  queues:
+    scannerQueue: "BarcodeQueue"
+    displayQueue: "DisplayQueue"
+    scaleQueue: "ScaleQueue"
+  routingKeys:
+    scannerKey: "BarcodeRoutingKey"
+    displayKey: "DisplayRoutingKey"
+    scaleKey: "ScaleRoutingKey"
+  timeouts:
+    heartbeat: 60
+    networkRecover: 1
+    connection: 10
+
+devicesPort:
+  cubic: "COM23" #Сканер-Кубик
+  handheld: "3232" #Ручной сканер
+  scales: "3232" #Весы
+  scalesScanner: "COM1" #Встроенный сканер в весовую платформу
+  display: "332" #Дисплей покупателя

@@ -4,14 +4,18 @@ import com.rabbitmq.client.Connection
 import com.rabbitmq.client.ConnectionFactory
 import com.rabbitmq.client.Recoverable
 import com.rabbitmq.client.RecoveryListener
-import utils.Constants.RABBITMQ_CONNECTION_TIMEOUT
-import utils.Constants.RABBITMQ_HEART_BEAT_TIMEOUT
-import utils.Constants.RABBITMQ_NETWORK_RECOVER_INTERVAL
+import config.data.Config
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 object ConnectionManager {
+    private lateinit var config: Config
+    fun instance(cfg: Config): ConnectionManager {
+        config = cfg
+        return this
+    }
+
     var connection: Connection? = null
         /**
          * Create RabbitMQ Connection
@@ -22,14 +26,14 @@ object ConnectionManager {
             if (field == null) {
                 try {
                     val connectionFactory = ConnectionFactory().apply {
-                        host = "192.168.88.22"
-                        port = 5672
-                        username = "admin"
-                        password = "1"
+                        host = config.rabbitmq.host
+                        port = config.rabbitmq.port
+                        username = config.rabbitmq.username
+                        password = config.rabbitmq.password
                         isAutomaticRecoveryEnabled = true
-                        networkRecoveryInterval = TimeUnit.SECONDS.toMillis(RABBITMQ_NETWORK_RECOVER_INTERVAL)
-                        requestedHeartbeat = RABBITMQ_HEART_BEAT_TIMEOUT
-                        connectionTimeout = TimeUnit.SECONDS.toMillis(RABBITMQ_CONNECTION_TIMEOUT).toInt()
+                        networkRecoveryInterval = TimeUnit.SECONDS.toMillis(config.rabbitmq.timeouts.networkRecover)
+                        requestedHeartbeat = config.rabbitmq.timeouts.heartbeat
+                        connectionTimeout = TimeUnit.SECONDS.toMillis(config.rabbitmq.timeouts.connection).toInt()
                     }
                     val connection = connectionFactory.newConnection("ConnectionName")
                     (connection as Recoverable).addRecoveryListener(object : RecoveryListener {

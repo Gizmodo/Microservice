@@ -1,7 +1,7 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.8.0-RC2'
+    id 'org.jetbrains.kotlin.jvm' version '1.8.20-Beta'
     id 'application'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.0-RC2'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.20-Beta'
 }
 
 group = 'org.example'
@@ -23,6 +23,13 @@ dependencies {
     implementation("com.fazecast:jSerialComm:[2.0.0,3.0.0)")
     implementation("com.rabbitmq:amqp-client:5.16.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    implementation "com.github.skydoves:whatif:1.1.2"
+    implementation platform("io.arrow-kt:arrow-stack:1.0.1")
+
+    implementation "io.arrow-kt:arrow-core"
+    implementation "io.arrow-kt:arrow-fx-coroutines"
+    implementation("com.sksamuel.hoplite:hoplite-core:2.7.1")
+    implementation("com.sksamuel.hoplite:hoplite-yaml:2.7.1")
 }
 
 test {
@@ -30,13 +37,20 @@ test {
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = '18'
+    kotlinOptions.jvmTarget = '19'
 }
 
 compileTestKotlin {
-    kotlinOptions.jvmTarget = '18'
+    kotlinOptions.jvmTarget = '19'
 }
 
 application {
     mainClassName = 'MainKt'
+}
+kotlin {
+    sourceSets.configureEach {
+        languageSettings {
+            languageVersion = '2.0'
+        }
+    }
 }
