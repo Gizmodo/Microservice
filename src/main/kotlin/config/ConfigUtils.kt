@@ -13,7 +13,7 @@ import java.io.File
 
 object ConfigUtils {
     private val logger by logger()
-    fun loadConfig(): Either<Problem, Config> {
+    fun getConfig(): Either<Problem, Config> {
         return try {
             logger.info { "Loading config" }
             ConfigLoaderBuilder

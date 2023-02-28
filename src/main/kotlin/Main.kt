@@ -1,7 +1,7 @@
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
-import config.ConfigUtils.loadConfig
+import config.ConfigUtils.getConfig
 import config.data.Config
 import enums.*
 import kotlinx.coroutines.*
@@ -40,7 +40,7 @@ val state: Flow<String> = shared.distinctUntilChanged()
 val completableJob = Job()
 val coroutineScope = CoroutineScope(Dispatchers.IO + completableJob)
 
-fun printComPorts() {
+fun printAvailablePorts() {
     logger.debug { "Print serial ports" }
     val ports = SerialPort.getCommPorts()
     if (ports.isEmpty()) {
@@ -171,8 +171,8 @@ fun connectLPOSComPort() {
     }
 }
 
-fun main() {
-    loadConfig().fold(
+fun loadConfig() {
+    getConfig().fold(
         { error ->
             logger.error { error }
             exitProcess(404)
@@ -190,16 +190,6 @@ fun main() {
             logger.info { "RabbitMQ successfully configured" }
         }
     )
-
-    workWithCoroutines()
-    printComPorts()
-    connectBarcodeComPort()
-    connectLPOSComPort()
-    connectScalePort()
-    // запуск цикла опроса весового модуля
-    requestScale()
-
-    subscribeToRabbitMQMessages()
 }
 
 fun subscribeToRabbitMQMessages() {
@@ -348,7 +338,7 @@ fun requestScale(): Job {
     }
 }
 
-fun workWithCoroutines() {
+fun startCollectFlowStates() {
     CoroutineScope(Dispatchers.IO).launch {
         scaleFlow.collectLatest {
             logger.warn { it }
@@ -415,4 +405,20 @@ fun workWithCoroutines() {
             }
         }
     }
+}
+
+fun main() {
+    loadConfig()
+    startCollectFlowStates()
+    printAvailablePorts()
+    connectDevices()
+    // запуск цикла опроса весового модуля
+    requestScale()
+    subscribeToRabbitMQMessages()
+}
+
+fun connectDevices() {
+    connectBarcodeComPort()
+    connectLPOSComPort()
+    connectScalePort()
 }
