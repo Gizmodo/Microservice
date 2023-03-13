@@ -8,6 +8,7 @@ fun littleEndianConversion(bytes: ByteArray): Int {
     }
     return result
 }
+
 @JvmOverloads
 fun ByteArray.toHexString2(separator: CharSequence = " ", prefix: CharSequence = "[", postfix: CharSequence = "]") =
     this.joinToString(separator, prefix, postfix) {
