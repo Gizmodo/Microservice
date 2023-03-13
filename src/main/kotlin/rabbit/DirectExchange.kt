@@ -1,7 +1,7 @@
 package rabbit
 
 import _events
-import com.rabbitmq.client.*
+import com.rabbitmq.client.BuiltinExchangeType
 import config.data.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,12 +56,14 @@ class DirectExchange(private val config: Config) {
                     false,
                     null
                 )
+                val args: MutableMap<String, Any> = HashMap()
+                args["message-ttl"] = 10000
                 queueDeclare(
                     config.rabbitmq.queues.scaleQueue,
                     true,
                     false,
                     false,
-                    null
+                    args
                 )
                 close()
             }

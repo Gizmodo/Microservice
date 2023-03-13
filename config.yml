@@ -18,8 +18,18 @@ rabbitmq:
     connection: 10
 
 devicesPort:
-  cubic: "COM23" #Сканер-Кубик
-  handheld: "3232" #Ручной сканер
-  scales: "3232" #Весы
-  scalesScanner: "COM1" #Встроенный сканер в весовую платформу
-  display: "332" #Дисплей покупателя
+  cubic:
+    enabled: yes
+    port: "COM12" #Сканер-Кубик
+  handheld:
+    enabled: yes
+    port: "COM10" #Ручной сканер
+  scales:
+    enabled: yes
+    port: "COM5" #Весы
+  scalesScanner:
+    enabled: yes
+    port: "COM1" #Встроенный сканер в весовую платформу
+  display:
+    enabled: yes
+    port: "COM8" #Дисплей покупателя

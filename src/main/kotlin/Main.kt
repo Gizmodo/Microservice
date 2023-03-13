@@ -3,16 +3,16 @@ import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
 import config.ConfigUtils.getConfig
 import config.data.Config
-import enums.*
+import enums.ScaleCommand
+import enums.Symbols
+import enums.isKthBitSet
+import enums.littleEndianConversion
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import model.DisplayEvent
 import mu.KotlinLogging
 import rabbit.DirectExchange
-import utils.Constants.barcodeName
-import utils.Constants.barcodeName2
-import utils.Constants.displayName
 import java.io.IOException
 import kotlin.math.pow
 import kotlin.system.exitProcess
@@ -21,6 +21,7 @@ private val logger = KotlinLogging.logger {}
 lateinit var comPortDisplay: SerialPort
 lateinit var barcodePort: SerialPort
 lateinit var scalePort: SerialPort
+lateinit var cubicPort: SerialPort
 lateinit var lpos: LPOS
 lateinit var scaleDevice: ScaleDevice
 lateinit var monitorJob: Job
@@ -50,16 +51,21 @@ fun printAvailablePorts() {
     comPortsList.clear()
     SerialPort.getCommPorts().forEach { serialPort ->
         comPortsList.add(serialPort)
-        if (serialPort.descriptivePortName.contains(displayName)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.display.port)) {
             comPortDisplay = serialPort
         }
-        if (serialPort.descriptivePortName.contains(barcodeName)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.handheld.port)) {
             barcodePort = serialPort
         }
-        if (serialPort.descriptivePortName.contains(barcodeName2)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.cubic.port)) {
+            cubicPort = serialPort
+        }
+        if (serialPort.systemPortName.equals(config.devicesPort.scales.port)) {
             scalePort = serialPort
         }
-        logger.debug(serialPort.descriptivePortName.toString() + " " + serialPort.systemPortPath)
+        logger.debug(
+            serialPort.descriptivePortName.toString() + " " + serialPort.systemPortName
+        )
     }
 }
 
@@ -71,7 +77,7 @@ fun disconnectComPort() {
                 it.closePort()
             }
         }
-        logger.debug("Display com port ${config.devicesPort.display} closed")
+        logger.debug("Display com port ${config.devicesPort.display.port} closed")
     }
 }
 
@@ -88,6 +94,19 @@ fun disconnectScalePort() {
     }
 }
 
+fun disconnectCubic() {
+    if (::cubicPort.isInitialized) {
+        cubicPort.let {
+            if (it.isOpen) {
+                it.removeDataListener()
+                it.closePort()
+            }
+        }
+        monitorJob = monitorWorker()
+        logger.debug("Cubic port closed")
+    }
+}
+
 fun disconnectBarcodePort() {
     if (::barcodePort.isInitialized) {
         barcodePort.let {
@@ -101,12 +120,54 @@ fun disconnectBarcodePort() {
     }
 }
 
+fun connectCubicPort() {
+    if (::cubicPort.isInitialized) {
+        with(cubicPort) {
+            openPort()
+            if (::monitorJob.isInitialized) {
+                monitorJob.cancel()
+            }
+            addDataListener(object : SerialPortDataListener {
+                override fun getListeningEvents() =
+                    SerialPort.LISTENING_EVENT_DATA_AVAILABLE or SerialPort.LISTENING_EVENT_PORT_DISCONNECTED
+
+                override fun serialEvent(event: SerialPortEvent) {
+                    when (event.eventType) {
+                        SerialPort.LISTENING_EVENT_DATA_RECEIVED -> {
+                            logger.debug("LISTENING_EVENT_DATA_RECEIVED")
+                        }
+
+                        SerialPort.LISTENING_EVENT_DATA_AVAILABLE -> {
+                            Thread.sleep(100)
+                            val newData = ByteArray(this@with.bytesAvailable())
+                            val numRead = this@with.readBytes(newData, newData.size.toLong())
+                            val str = String(newData)
+                            dir.publishMessage(str)
+                            logger.debug { "Прочитан штрихкод с кубика $str" }
+                        }
+
+                        SerialPort.LISTENING_EVENT_PORT_DISCONNECTED -> {
+                            logger.debug("LISTENING_EVENT_PORT_DISCONNECTED")
+                            disconnectCubic()
+                        }
+
+                        else -> {
+                            logger.debug { "ELSE at barcode SerialEvent" }
+                        }
+                    }
+                }
+
+            })
+        }
+    }
+}
+
 fun connectBarcodeComPort() {
     if (::barcodePort.isInitialized) {
         with(barcodePort) {
             openPort()
             if (::monitorJob.isInitialized) {
-                monitorJob?.cancel()
+                monitorJob.cancel()
             }
             addDataListener(object : SerialPortDataListener {
                 override fun getListeningEvents() =
@@ -212,7 +273,7 @@ fun connectScalePort() {
             openPort()
             scaleDevice = ScaleDevice(scalePort)
             if (::monitorJob.isInitialized) {
-                monitorJob?.cancel()
+                monitorJob.cancel()
             }
             addDataListener(object : SerialPortDataListener {
                 override fun getListeningEvents() =
@@ -226,7 +287,7 @@ fun connectScalePort() {
                         }
 
                         SerialPort.LISTENING_EVENT_DATA_WRITTEN -> {
-                            logger.info { "Data written" }
+                            //  logger.info { "Data written" }
                         }
 
                         SerialPort.LISTENING_EVENT_DATA_AVAILABLE -> {
@@ -237,7 +298,7 @@ fun connectScalePort() {
 
                             val str = String(newData)
                             // dir.publishMessage(str)
-                            logger.debug { "Read $numRead bytes. Buffer $str" }
+                            // logger.debug { "Read $numRead bytes. Buffer $str" }
                         }
 
                         SerialPort.LISTENING_EVENT_PORT_DISCONNECTED -> {
@@ -258,8 +319,7 @@ fun connectScalePort() {
 }
 
 private fun parseScaleResponse(data: ByteArray) {
-    logger.info { data.toHexString2() }
-    val length = data[2]
+    //  logger.info { data.toHexString2() }
     when (Symbols from data[0]) {
         Symbols.ENQ -> {
             logger.info { "ENQ" }
@@ -286,12 +346,11 @@ private fun parseScaleResponse(data: ByteArray) {
                         val littleEndianConversion = littleEndianConversion(weightArray)
                         val result = 10.toDouble().pow((-3).toDouble())
                         // logger.info { weight.toDouble()*10f.pow(-3) }
-                        val roundoff = String.format("%.3f", littleEndianConversion * result)
+                        val roundOff = String.format("%.3f", littleEndianConversion * result)
                         //  logger.info { weight*result }
-                        //  logger.info { roundoff }
                         coroutineScope.launch {
-                            scaleFlow.emit(roundoff)
-                            shared.tryEmit(roundoff)
+                            scaleFlow.emit(roundOff)
+                            shared.tryEmit(roundOff)
                         }
                     }
                 }
@@ -317,13 +376,20 @@ fun monitorWorker(): Job {
         while (isActive) {
             SerialPort.getCommPorts().forEach { serialPort ->
                 if (!barcodePort.isOpen) {
-                    if (serialPort.descriptivePortName.contains(barcodeName)) {
+                    logger.info("Попытка восстановить подключение к ручному сканеру ${config.devicesPort.handheld.port}")
+                    if (serialPort.systemPortName.equals(config.devicesPort.handheld.port)) {
                         barcodePort = serialPort
                         connectBarcodeComPort()
                     }
                 }
+                if (!cubicPort.isOpen) {
+                    logger.info("Попытка восстановить подключение к кубику ${config.devicesPort.cubic.port}")
+                    if (serialPort.systemPortName.equals(config.devicesPort.cubic.port)) {
+                        cubicPort = serialPort
+                        connectCubicPort()
+                    }
+                }
             }
-            logger.info("Попытка восстановить подключение к $barcodeName")
             delay(3000)
         }
     }
@@ -421,4 +487,5 @@ fun connectDevices() {
     connectBarcodeComPort()
     connectLPOSComPort()
     connectScalePort()
+    connectCubicPort()
 }
