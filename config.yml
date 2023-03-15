@@ -1,6 +1,6 @@
 rabbitmq:
   exchange: "DisplayExchange"
-  host: "192.168.88.22"
+  host: "10.200.202.245"
   port: 5672
   username: "admin"
   password: "1"
@@ -20,16 +20,16 @@ rabbitmq:
 devicesPort:
   cubic:
     enabled: yes
-    port: "COM12" #Сканер-Кубик
+    port: "COM9" #Сканер-Кубик
   handheld:
     enabled: yes
-    port: "COM10" #Ручной сканер
+    port: "COM13" #Ручной сканер
   scales:
     enabled: yes
-    port: "COM5" #Весы
+    port: "COM15" #Весы
   scalesScanner:
     enabled: yes
     port: "COM1" #Встроенный сканер в весовую платформу
   display:
     enabled: yes
-    port: "COM8" #Дисплей покупателя
+    port: "COM11" #Дисплей покупателя

@@ -1,3 +1,4 @@
+import ch.qos.logback.classic.ClassicConstants
 import com.fazecast.jSerialComm.SerialPort
 import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
@@ -11,13 +12,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import model.DisplayEvent
+import mu.KLogger
 import mu.KotlinLogging
 import rabbit.DirectExchange
 import java.io.IOException
 import kotlin.math.pow
 import kotlin.system.exitProcess
 
-private val logger = KotlinLogging.logger {}
+lateinit var logger: KLogger
+
 lateinit var comPortDisplay: SerialPort
 lateinit var barcodePort: SerialPort
 lateinit var scalePort: SerialPort
@@ -474,6 +477,9 @@ fun startCollectFlowStates() {
 }
 
 fun main() {
+    System.setProperty(ClassicConstants.CONFIG_FILE_PROPERTY, "logback.xml");
+    logger = KotlinLogging.logger {}
+
     loadConfig()
     startCollectFlowStates()
     printAvailablePorts()

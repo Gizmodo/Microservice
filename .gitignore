@@ -11,4 +11,4 @@ gradle/wrapper/gradle-wrapper.jar
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
-/tests.log
+/log.log
