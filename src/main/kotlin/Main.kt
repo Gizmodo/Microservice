@@ -40,9 +40,12 @@ val shared = MutableSharedFlow<String>(
     replay = 1,
     onBufferOverflow = BufferOverflow.DROP_OLDEST
 )
+val handler = CoroutineExceptionHandler { context, exception ->
+    logger.error { "Caught $exception" }
+}
 val state: Flow<String> = shared.distinctUntilChanged()
 val completableJob = Job()
-val coroutineScope = CoroutineScope(Dispatchers.IO + completableJob)
+val coroutineScope = CoroutineScope(Dispatchers.IO + completableJob + handler)
 
 fun printAvailablePorts() {
     logger.debug { "Print serial ports" }
@@ -54,16 +57,24 @@ fun printAvailablePorts() {
     comPortsList.clear()
     SerialPort.getCommPorts().forEach { serialPort ->
         comPortsList.add(serialPort)
-        if (serialPort.systemPortName.equals(config.devicesPort.display.port)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.display.port) &&
+            config.devicesPort.display.enabled
+        ) {
             comPortDisplay = serialPort
         }
-        if (serialPort.systemPortName.equals(config.devicesPort.handheld.port)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.handheld.port) &&
+            config.devicesPort.handheld.enabled
+        ) {
             barcodePort = serialPort
         }
-        if (serialPort.systemPortName.equals(config.devicesPort.cubic.port)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.cubic.port) &&
+            config.devicesPort.cubic.enabled
+        ) {
             cubicPort = serialPort
         }
-        if (serialPort.systemPortName.equals(config.devicesPort.scales.port)) {
+        if (serialPort.systemPortName.equals(config.devicesPort.scales.port) &&
+            config.devicesPort.scales.enabled
+        ) {
             scalePort = serialPort
         }
         logger.debug(
@@ -124,6 +135,7 @@ fun disconnectBarcodePort() {
 }
 
 fun connectCubicPort() {
+    if (!config.devicesPort.cubic.enabled) return
     if (::cubicPort.isInitialized) {
         with(cubicPort) {
             openPort()
@@ -166,6 +178,7 @@ fun connectCubicPort() {
 }
 
 fun connectBarcodeComPort() {
+    if (!config.devicesPort.handheld.enabled) return
     if (::barcodePort.isInitialized) {
         with(barcodePort) {
             openPort()
@@ -207,6 +220,7 @@ fun connectBarcodeComPort() {
 }
 
 fun connectLPOSComPort() {
+    if (!config.devicesPort.display.enabled) return
     if (::comPortDisplay.isInitialized) {
         with(comPortDisplay) {
             openPort()
@@ -271,10 +285,12 @@ fun subscribeToRabbitMQMessages() {
 }
 
 fun connectScalePort() {
+    if (!config.devicesPort.scales.enabled) return
     if (::scalePort.isInitialized) {
         with(scalePort) {
             openPort()
             scaleDevice = ScaleDevice(scalePort)
+            requestScale()
             if (::monitorJob.isInitialized) {
                 monitorJob.cancel()
             }
@@ -485,7 +501,7 @@ fun main() {
     printAvailablePorts()
     connectDevices()
     // запуск цикла опроса весового модуля
-    requestScale()
+
     subscribeToRabbitMQMessages()
 }
 
