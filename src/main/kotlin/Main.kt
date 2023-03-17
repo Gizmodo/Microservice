@@ -4,10 +4,7 @@ import com.fazecast.jSerialComm.SerialPortDataListener
 import com.fazecast.jSerialComm.SerialPortEvent
 import config.ConfigUtils.getConfig
 import config.data.Config
-import enums.ScaleCommand
-import enums.Symbols
-import enums.isKthBitSet
-import enums.littleEndianConversion
+import enums.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
@@ -36,6 +33,7 @@ val _events = MutableSharedFlow<DisplayEvent>()
 val events = _events.asSharedFlow()
 val scaleFlow = MutableSharedFlow<String>()
 lateinit var dir: DirectExchange
+val weightStateResponseFlow = MutableSharedFlow<WeightChannelState>()
 val shared = MutableSharedFlow<String>(
     replay = 1,
     onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -313,7 +311,7 @@ fun connectScalePort() {
                             Thread.sleep(100)
                             val newData = ByteArray(this@with.bytesAvailable())
                             val numRead = this@with.readBytes(newData, newData.size.toLong())
-                            parseScaleResponse(newData)
+                            onScaleResponse(newData)
 
                             val str = String(newData)
                             // dir.publishMessage(str)
@@ -337,7 +335,7 @@ fun connectScalePort() {
     }
 }
 
-private fun parseScaleResponse(data: ByteArray) {
+private fun onScaleResponse(data: ByteArray) {
     //  logger.info { data.toHexString2() }
     when (Symbols from data[0]) {
         Symbols.ENQ -> {
@@ -349,24 +347,22 @@ private fun parseScaleResponse(data: ByteArray) {
         }
 
         Symbols.ACK -> {
-            logger.info { "ACK" }
+            //logger.info { "ACK" }
             when (ScaleCommand from data[3]) {
                 ScaleCommand.GETWEIGHT -> {
-                    logger.info { "Weight response" }
+                 //   parseWeightResponseState(data)
                     val byteArray = byteArrayOf(data[5], data[6])
+
                     val shortArray = ShortArray(byteArray.size / 2) {
                         (byteArray[it * 2].toUByte().toInt() + (byteArray[(it * 2) + 1].toInt() shl 8)).toShort()
                     }
                     val state = shortArray[0].toUShort().toString(radix = 2).padStart(UByte.SIZE_BITS, '0')
-                    logger.info { state }
                     if (isKthBitSet(shortArray[0].toUShort().toInt(), 0)) {
                         logger.info { "признак фиксации веса" }
                         val weightArray = byteArrayOf(data[7], data[8], data[9], data[10])
                         val littleEndianConversion = littleEndianConversion(weightArray)
                         val result = 10.toDouble().pow((-3).toDouble())
-                        // logger.info { weight.toDouble()*10f.pow(-3) }
                         val roundOff = String.format("%.3f", littleEndianConversion * result)
-                        //  logger.info { weight*result }
                         coroutineScope.launch {
                             scaleFlow.emit(roundOff)
                             shared.tryEmit(roundOff)
@@ -386,6 +382,51 @@ private fun parseScaleResponse(data: ByteArray) {
 
         Symbols.ERR -> {
             logger.info { "ERR" }
+        }
+    }
+}
+
+fun parseWeightResponseState(data: ByteArray) {
+    val stateField = byteArrayOf(data[5], data[6])
+    val shortArray = ShortArray(stateField.size / 2) {
+        (stateField[it * 2].toUByte().toInt() + (stateField[(it * 2) + 1].toInt() shl 8)).toShort()
+    }
+    val state = shortArray[0].toUShort().toString(radix = 2).padStart(UByte.SIZE_BITS, '0')
+    val setInt = shortArray[0].toUShort().toInt()
+    coroutineScope.launch {
+        if (isKthBitSet(setInt, 0)) {
+            val weightArray = byteArrayOf(data[7], data[8], data[9], data[10])
+            val littleEndianConversion = littleEndianConversion(weightArray)
+            val result = 10.toDouble().pow((-3).toDouble())
+            val roundOff = String.format("%.3f", littleEndianConversion * result)
+            weightStateResponseFlow.emit(WeightChannelState.Fixed(roundOff))
+        }
+        if (isKthBitSet(setInt, 1)) {
+            weightStateResponseFlow.emit(WeightChannelState.AutoNull)
+        }
+        if (!isKthBitSet(setInt, 2)) {
+            weightStateResponseFlow.emit(WeightChannelState.ChannelDown)
+        }
+        if (isKthBitSet(setInt, 3)) {
+            weightStateResponseFlow.emit(WeightChannelState.Tare)
+        }
+        if (isKthBitSet(setInt, 4)) {
+            weightStateResponseFlow.emit(WeightChannelState.StableWeight)
+        }
+        if (isKthBitSet(setInt, 5)) {
+            weightStateResponseFlow.emit(WeightChannelState.AutoNullOnPowerOn)
+        }
+        if (isKthBitSet(setInt, 6)) {
+            weightStateResponseFlow.emit(WeightChannelState.Overload)
+        }
+        if (isKthBitSet(setInt, 7)) {
+            weightStateResponseFlow.emit(WeightChannelState.ErrorMeasurement)
+        }
+        if (isKthBitSet(setInt, 8)) {
+            weightStateResponseFlow.emit(WeightChannelState.Underload)
+        }
+        if (isKthBitSet(setInt, 9)) {
+            weightStateResponseFlow.emit(WeightChannelState.ErrorADC)
         }
     }
 }
@@ -426,13 +467,58 @@ fun requestScale(): Job {
 fun startCollectFlowStates() {
     CoroutineScope(Dispatchers.IO).launch {
         scaleFlow.collectLatest {
-            logger.warn { it }
+            logger.debug {"scaleFlow $it" }
         }
     }
     CoroutineScope(Dispatchers.IO).launch {
         state.collectLatest {
-            logger.error { it }
+            logger.debug {"state $it" }
             dir.publishScaleWeight(it)
+        }
+    }
+    CoroutineScope(Dispatchers.IO).launch {
+        weightStateResponseFlow.collectLatest {
+            when (it) {
+                is WeightChannelState.Fixed -> {
+                    logger.info { "признак фиксации веса" }
+                    logger.error { "!!!!!!!!!!!!!!! -> " + it.weight }
+                    dir.publishScaleWeight(it.weight)
+                }
+
+                WeightChannelState.AutoNull -> {
+                    logger.info { "работа автонуля" }
+                }
+
+                WeightChannelState.AutoNullOnPowerOn -> {
+                    logger.error { "ошибка автонуля при включении" }
+                }
+
+                WeightChannelState.ChannelDown -> {
+                    logger.error { "канал выключен" }
+                }
+
+                WeightChannelState.ErrorADC -> {
+                    logger.error { "нет ответа от АЦП" }
+                }
+
+                WeightChannelState.ErrorMeasurement -> {
+                    logger.error { "ошибка при получении измерения" }
+                }
+
+                WeightChannelState.Overload -> {
+                    logger.error { "перегрузка по весу" }
+                }
+
+                WeightChannelState.Reserved -> {}
+                WeightChannelState.Tare -> {}
+                WeightChannelState.StableWeight -> {
+                    logger.info { "признак успокоения веса" }
+                }
+
+                WeightChannelState.Underload -> {
+                    logger.info { "весы недогружены" }
+                }
+            }
         }
     }
     CoroutineScope(Dispatchers.IO).launch {
@@ -501,7 +587,6 @@ fun main() {
     printAvailablePorts()
     connectDevices()
     // запуск цикла опроса весового модуля
-
     subscribeToRabbitMQMessages()
 }
 
