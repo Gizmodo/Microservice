@@ -357,8 +357,9 @@ private fun onScaleResponse(data: ByteArray) {
                         (byteArray[it * 2].toUByte().toInt() + (byteArray[(it * 2) + 1].toInt() shl 8)).toShort()
                     }
                     val state = shortArray[0].toUShort().toString(radix = 2).padStart(UByte.SIZE_BITS, '0')
+                    logger.info { state }
                     if (isKthBitSet(shortArray[0].toUShort().toInt(), 0)) {
-                        logger.info { "признак фиксации веса" }
+                        logger.info { "!признак фиксации веса" }
                         val weightArray = byteArrayOf(data[7], data[8], data[9], data[10])
                         val littleEndianConversion = littleEndianConversion(weightArray)
                         val result = 10.toDouble().pow((-3).toDouble())
@@ -477,46 +478,46 @@ fun startCollectFlowStates() {
         }
     }
     CoroutineScope(Dispatchers.IO).launch {
-        weightStateResponseFlow.collectLatest {
+        weightStateResponseFlow.distinctUntilChanged().collectLatest {
             when (it) {
                 is WeightChannelState.Fixed -> {
-                    logger.info { "признак фиксации веса" }
-                    logger.error { "!!!!!!!!!!!!!!! -> " + it.weight }
+                    logger.info { "weightStateResponseFlow признак фиксации веса" }
+                    logger.error { "weightStateResponseFlow !!!!!!!!!!!!!!! -> " + it.weight }
                     dir.publishScaleWeight(it.weight)
                 }
 
                 WeightChannelState.AutoNull -> {
-                    logger.info { "работа автонуля" }
+                    logger.info { "weightStateResponseFlow работа автонуля" }
                 }
 
                 WeightChannelState.AutoNullOnPowerOn -> {
-                    logger.error { "ошибка автонуля при включении" }
+                    logger.error { "weightStateResponseFlow ошибка автонуля при включении" }
                 }
 
                 WeightChannelState.ChannelDown -> {
-                    logger.error { "канал выключен" }
+                    logger.error { "weightStateResponseFlow канал выключен" }
                 }
 
                 WeightChannelState.ErrorADC -> {
-                    logger.error { "нет ответа от АЦП" }
+                    logger.error { "weightStateResponseFlow нет ответа от АЦП" }
                 }
 
                 WeightChannelState.ErrorMeasurement -> {
-                    logger.error { "ошибка при получении измерения" }
+                    logger.error { "weightStateResponseFlow ошибка при получении измерения" }
                 }
 
                 WeightChannelState.Overload -> {
-                    logger.error { "перегрузка по весу" }
+                    logger.error { "weightStateResponseFlow перегрузка по весу" }
                 }
 
                 WeightChannelState.Reserved -> {}
                 WeightChannelState.Tare -> {}
                 WeightChannelState.StableWeight -> {
-                    logger.info { "признак успокоения веса" }
+                    logger.info { "weightStateResponseFlow признак успокоения веса" }
                 }
 
                 WeightChannelState.Underload -> {
-                    logger.info { "весы недогружены" }
+                    logger.info { "weightStateResponseFlow весы недогружены" }
                 }
             }
         }

@@ -29,7 +29,7 @@ devicesPort:
     port: "COM15" #Весы
   scalesScanner:
     enabled: yes
-    port: "COM1" #Встроенный сканер в весовую платформу
+    port: "COM17" #Встроенный сканер в весовую платформу
   display:
     enabled: yes
     port: "COM11" #Дисплей покупателя
