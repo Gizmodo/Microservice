@@ -22,6 +22,7 @@ lateinit var comPortDisplay: SerialPort
 lateinit var barcodePort: SerialPort
 lateinit var scalePort: SerialPort
 lateinit var cubicPort: SerialPort
+lateinit var scalesScannerPort: SerialPort
 lateinit var lpos: LPOS
 lateinit var scaleDevice: ScaleDevice
 lateinit var monitorJob: Job
@@ -74,6 +75,11 @@ fun printAvailablePorts() {
             config.devicesPort.scales.enabled
         ) {
             scalePort = serialPort
+        }
+        if (serialPort.systemPortName.equals(config.devicesPort.scalesScanner.port) &&
+            config.devicesPort.scalesScanner.enabled
+        ) {
+            scalesScannerPort = serialPort
         }
         logger.debug(
             serialPort.descriptivePortName.toString() + " " + serialPort.systemPortName
@@ -129,6 +135,19 @@ fun disconnectBarcodePort() {
         }
         monitorJob = monitorWorker()
         logger.debug("Barcode port closed")
+    }
+}
+
+fun disconnectScaleScannerPort() {
+    if (::scalesScannerPort.isInitialized) {
+        scalesScannerPort.let {
+            if (it.isOpen) {
+                it.removeDataListener()
+                it.closePort()
+            }
+        }
+        monitorJob = monitorWorker()
+        logger.debug("scalesScanner port closed")
     }
 }
 
@@ -204,6 +223,48 @@ fun connectBarcodeComPort() {
                         SerialPort.LISTENING_EVENT_PORT_DISCONNECTED -> {
                             logger.debug("LISTENING_EVENT_PORT_DISCONNECTED")
                             disconnectBarcodePort()
+                        }
+
+                        else -> {
+                            logger.debug { "ELSE at barcode SerialEvent" }
+                        }
+                    }
+                }
+
+            })
+        }
+    }
+}
+
+fun connectScaleScannerComPort() {
+    if (!config.devicesPort.scalesScanner.enabled) return
+    if (::scalesScannerPort.isInitialized) {
+        with(scalesScannerPort) {
+            openPort()
+            if (::monitorJob.isInitialized) {
+                monitorJob.cancel()
+            }
+            addDataListener(object : SerialPortDataListener {
+                override fun getListeningEvents() =
+                    SerialPort.LISTENING_EVENT_DATA_AVAILABLE or SerialPort.LISTENING_EVENT_PORT_DISCONNECTED
+
+                override fun serialEvent(event: SerialPortEvent) {
+                    when (event.eventType) {
+                        SerialPort.LISTENING_EVENT_DATA_RECEIVED -> {
+                            logger.debug("LISTENING_EVENT_DATA_RECEIVED")
+                        }
+
+                        SerialPort.LISTENING_EVENT_DATA_AVAILABLE -> {
+                            val newData = ByteArray(this@with.bytesAvailable())
+                            val numRead = this@with.readBytes(newData, newData.size.toLong())
+                            val str = String(newData)
+                            dir.publishMessage(str)
+                            logger.info { "Read $numRead bytes. Buffer $str" }
+                        }
+
+                        SerialPort.LISTENING_EVENT_PORT_DISCONNECTED -> {
+                            logger.debug("LISTENING_EVENT_PORT_DISCONNECTED")
+                            disconnectScaleScannerPort()
                         }
 
                         else -> {
@@ -350,7 +411,7 @@ private fun onScaleResponse(data: ByteArray) {
             //logger.info { "ACK" }
             when (ScaleCommand from data[3]) {
                 ScaleCommand.GETWEIGHT -> {
-                 //   parseWeightResponseState(data)
+                    //   parseWeightResponseState(data)
                     val byteArray = byteArrayOf(data[5], data[6])
 
                     val shortArray = ShortArray(byteArray.size / 2) {
@@ -450,6 +511,13 @@ fun monitorWorker(): Job {
                         connectCubicPort()
                     }
                 }
+                if (!scalesScannerPort.isOpen) {
+                    logger.info("Попытка восстановить подключение к сканеру весовой платформы ${config.devicesPort.scalesScanner.port}")
+                    if (serialPort.systemPortName.equals(config.devicesPort.scalesScanner.port)) {
+                        scalesScannerPort = serialPort
+                        connectScaleScannerComPort()
+                    }
+                }
             }
             delay(3000)
         }
@@ -468,12 +536,12 @@ fun requestScale(): Job {
 fun startCollectFlowStates() {
     CoroutineScope(Dispatchers.IO).launch {
         scaleFlow.collectLatest {
-            logger.debug {"scaleFlow $it" }
+            logger.debug { "scaleFlow $it" }
         }
     }
     CoroutineScope(Dispatchers.IO).launch {
         state.collectLatest {
-            logger.debug {"state $it" }
+            logger.debug { "state $it" }
             dir.publishScaleWeight(it)
         }
     }
@@ -596,4 +664,5 @@ fun connectDevices() {
     connectLPOSComPort()
     connectScalePort()
     connectCubicPort()
+    connectScaleScannerComPort()
 }
