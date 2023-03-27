@@ -40,24 +40,28 @@ class DirectExchange(private val config: Config) {
         val connection = ConnectionManager.instance(config).connection
         connection?.let {
             val channel = it.createChannel()
+            val args: MutableMap<String, Any> = HashMap()
+            args["x-message-ttl"] = config.rabbitmq.timeouts.messagettl
             //Create the Queues
             with(channel) {
+                queueDelete(config.rabbitmq.queues.displayQueue)
+                queueDelete(config.rabbitmq.queues.scannerQueue)
+                queueDelete(config.rabbitmq.queues.scaleQueue)
                 queueDeclare(
                     config.rabbitmq.queues.displayQueue,
                     true,
                     false,
                     false,
-                    null
+                    args
                 )
                 queueDeclare(
                     config.rabbitmq.queues.scannerQueue,
                     true,
                     false,
                     false,
-                    null
+                    args
                 )
-                val args: MutableMap<String, Any> = HashMap()
-                args["message-ttl"] = 10000
+
                 queueDeclare(
                     config.rabbitmq.queues.scaleQueue,
                     true,

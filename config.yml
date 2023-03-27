@@ -13,6 +13,7 @@ rabbitmq:
     displayKey: "DisplayRoutingKey"
     scaleKey: "ScaleRoutingKey"
   timeouts:
+    messagettl: 5000
     heartbeat: 60
     networkRecover: 1
     connection: 10
