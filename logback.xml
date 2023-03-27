@@ -33,7 +33,7 @@
             <pattern>%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-    <root level="info">
+    <root level="">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="MONGO"/>
         <appender-ref ref="FILE"/>
