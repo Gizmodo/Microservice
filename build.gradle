@@ -12,24 +12,22 @@ repositories {
 }
 
 dependencies {
-    implementation 'junit:junit:4.13.2'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-Beta")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.0-Beta")
-    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
-    implementation 'io.github.oshai:kotlin-logging-jvm:4.0.0-beta-22'
-    implementation("ch.qos.logback:logback-classic:1.4.5")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-    implementation("com.fazecast:jSerialComm:[2.0.0,3.0.0)")
-    implementation("com.rabbitmq:amqp-client:5.17.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    testImplementation "org.jetbrains.kotlin:kotlin-test"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-Beta"
+    implementation "io.github.microutils:kotlin-logging-jvm:3.0.5"
+    implementation "io.github.oshai:kotlin-logging-jvm:4.0.0-beta-22"
+    implementation "ch.qos.logback:logback-classic:1.4.6"
+    implementation "org.jetbrains.kotlinx:kotlinx-datetime:0.4.0"
+    implementation "com.fazecast:jSerialComm:2.9.3"
+    implementation "com.rabbitmq:amqp-client:5.17.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0"
     implementation "com.github.skydoves:whatif:1.1.2"
     implementation platform("io.arrow-kt:arrow-stack:1.0.1")
-    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.9.0'
+    implementation "org.mongodb:mongodb-driver-reactivestreams:4.9.0"
     implementation "io.arrow-kt:arrow-core"
     implementation "io.arrow-kt:arrow-fx-coroutines"
-    implementation("com.sksamuel.hoplite:hoplite-core:2.7.1")
-    implementation("com.sksamuel.hoplite:hoplite-yaml:2.7.1")
+    implementation "com.sksamuel.hoplite:hoplite-core:2.7.3"
+    implementation "com.sksamuel.hoplite:hoplite-yaml:2.7.3"
 }
 
 test {
